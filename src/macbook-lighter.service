@@ -1,0 +1,10 @@
+[Unit]
+Description=Macbook screen backlight on the ambient light
+Documentation=https://github.com/harttle/macbook-lighter
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/macbook-lighter
+
+[Install]
+WantedBy=multi-user.target 
