@@ -4,7 +4,7 @@ Documentation=https://github.com/harttle/macbook-lighter
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/macbook-lighter
+ExecStart=/usr/bin/macbook-lighter-ambient
 
 [Install]
 WantedBy=multi-user.target 

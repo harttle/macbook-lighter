@@ -71,7 +71,7 @@ my $keyb_min=0;
 # Maximum keyboard brightness on battery.
 my $keyb_max_bat=2;
 # Maximum light ammount.
-my $keyb_max=180; #actual max = 255.
+my $keyb_max=255;
 # Minimum difference to change the brightness.
 my $keyb_min_diff=20;
 # Path for keyboard backglight.
