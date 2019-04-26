@@ -1,5 +1,5 @@
 # Maintainer: harttle <yangjvn@126.com>
-# many thanks to Janhouse's perl script https://github.com/Janhouse/lighter
+# Inspired by lighter, many thanks to Janhouse's perl script https://github.com/Janhouse/lighter
 pkgname=macbook-lighter-git
 _pkgname=macbook-lighter
 pkgver=v0.0.1.2.g2ce0a1a
@@ -10,8 +10,8 @@ url="https://github.com/harttle/macbook-lighter"
 license=('GPL')
 depends=('perl')
 makedepends=('git')
-provides=(macbook-lighter macbook-lighter-kbd macbook-lighter-intel)
-conflicts=(macbook-lighter macbook-lighter-kbd macbook-lighter-intel)
+provides=(macbook-lighter macbook-lighter-kbd macbook-lighter-screen)
+conflicts=(macbook-lighter macbook-lighter-kbd macbook-lighter-screen)
 source=('git+https://github.com/harttle/macbook-lighter.git')
 md5sums=('SKIP')
 
