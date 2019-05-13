@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
+lid_dev="/proc/acpi/button/lid/LID0/state";
 light_dev="/sys/devices/platform/applesmc.768/light";
+power_dev="/sys/class/power_supply/ADP1/online";
 screen_dev="/sys/class/backlight/intel_backlight/brightness";
 kbd_dev="/sys/class/leds/smc::kbd_backlight/brightness";
 screen_max=$(cat /sys/class/backlight/intel_backlight/max_brightness);
@@ -13,20 +15,25 @@ ML_DURATION=${ML_DURATION:-1.5}
 # frame for each step
 ML_FRAME=0.017
 # check interval
-ML_INTERVAL=7
+ML_INTERVAL=5
 # bright enough
 ML_BRIGHT=40
 # trigger threshold
-ML_THRESHOLD=2
+ML_SCREEN_THRESHOLD=10
 # min screen brightness
 ML_MIN_BRIGHT=15
+# keyboard brightness on dark
+ML_KBD_BRIGHT=128
+# battery dim
+ML_BATTERY_DIM=${ML_BATTERY_DIM:-0.2}
 # DEBUG
 ML_DEBUG=${ML_DEBUG:-false}
 $ML_DEBUG && set -e
 
 #####################################################
 # Private States
-last_light=0
+screen_ajusted_at=0
+kbd_adjusted_at=0
 
 function get_light {
     val=$(cat $light_dev)   # eg. (41,0)
@@ -57,53 +64,76 @@ function screen_range {
     fi
 }
 
-function check {
-    $ML_DEBUG && echo checking
-    lid=$(awk -F: '{print $2}' /proc/acpi/button/lid/LID0/state)
+function update_screen {
+    light=$1
+    screen_from=$(cat $screen_dev)
+    screen_to=$(echo "$screen_from * $light / $screen_ajusted_at" | bc)
+    screen_to=$(screen_range $screen_to)
+    if (( screen_to - screen_from > -ML_SCREEN_THRESHOLD && screen_to - screen_from < ML_SCREEN_THRESHOLD )); then
+        $ML_DEBUG && echo "threshold not reached($screen_from->$screen_to), skip update"
+        return
+    fi
+    screen_ajusted_at=$light
+    transition $screen_from $screen_to $screen_dev
+}
+
+function update_kbd {
+    light=$1
+    kbd_from=$(cat $kbd_dev)
+
+    $ML_DEBUG && echo light:$light, kbd_adjusted_at:$kbd_adjusted_at, ML_BRIGHT: $ML_BRIGHT
+    if (( light >= ML_BRIGHT && kbd_adjusted_at < ML_BRIGHT )); then
+        ML_KBD_BRIGHT=$kbd_from
+        kbd_to=0
+    elif (( light < ML_BRIGHT && kbd_adjusted_at >= ML_BRIGHT )); then
+        kbd_to=$ML_KBD_BRIGHT
+    fi
+
+    if (( kbd_to == kbd_from )); then
+        $ML_DEBUG && echo "kbd threshold not reached($kbd_from->$kbd_to), skip update"
+        return
+    fi
+    kbd_adjusted_at=$light
+    transition $kbd_from $kbd_to $kbd_dev
+}
+
+function update {
+    $ML_DEBUG && echo updating
+    lid=$(awk -F: '{print $2}' $lid_dev)
     if [ "$lid" == "closed" ]; then
         $ML_DEBUG && echo lid closed, skip update
         return
     fi
 
     light=$(get_light)
-    diff=$(echo $((light-last_light)) | tr -d -)
-    if (( diff < ML_THRESHOLD )); then
-        $ML_DEBUG && echo "threshold not reached($last_light->$light), skip update"
-        return
-    fi
-
-    screen_from=$(cat $screen_dev)
-    screen_to=$(echo "$screen_from * $light / $last_light" | bc)
-    screen_to=$(screen_range $screen_to)
-    transition $screen_from $screen_to $screen_dev
-
-    kbd_from=$(cat $kbd_dev)
-    kbd_to=$(echo "$kbd_from * $last_light / $light" | bc)
-    transition $kbd_from $kbd_to $kbd_dev
-
-    last_light=$light
+    update_screen $light
+    update_kbd $light
 }
 
 function watch {
     while true; do
-        check
+        update
         sleep $ML_INTERVAL
     done
 }
 
 function init {
     light=$(get_light)
-    last_light=$light
+    power=$(cat $power_dev)
+    screen_ajusted_at=$light
+    kbd_adjusted_at=$light
     if (( light >= ML_BRIGHT )); then
         screen_to=$screen_max
-        kbd_to=$kbd_max
+        kbd_to=0
     else
-        screen_to=$(echo "$screen_max * $light / $ML_BRIGHT" | bc)
+        screen_to=$(echo "(1.2 - $ML_BATTERY_DIM) * $screen_max * $light / $ML_BRIGHT" | bc)
         screen_to=$(screen_range $screen_to)
-        kbd_to=$(echo "$kbd_max * $light / $ML_BRIGHT" | bc)
+        kbd_to=$ML_KBD_BRIGHT
     fi
+
     screen_from=$(cat $screen_dev)
     kbd_from=$(cat $kbd_dev)
+
     transition $screen_from $screen_to $screen_dev
     transition $kbd_from $kbd_to $kbd_dev
 }
