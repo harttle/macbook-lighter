@@ -1,7 +1,7 @@
 # Maintainer: harttle <yangjvn@126.com>
 # Inspired by lighter, many thanks to Janhouse's perl script https://github.com/Janhouse/lighter
 pkgname=macbook-lighter
-pkgver=v0.0.2.1.g4441c81
+pkgver=v0.0.2.5.g112c1f0
 pkgrel=1
 pkgdesc="Macbook screen/keyboard backlight CLI and auto-adjust on ambient light"
 arch=(any)
@@ -21,7 +21,7 @@ pkgver() {
 
 package() {
   cd "$srcdir/$pkgname"
-  [ ! -f /etc/macbook-lighter.conf ] && install -Dm644 macbook-lighter.conf /etc/macbook-lighter.conf
+  [ ! -f $pkgdir/etc/macbook-lighter.conf ] && install -Dm644 macbook-lighter.conf $pkgdir/etc/macbook-lighter.conf
   install -Dm644 "macbook-lighter.service" "$pkgdir/usr/lib/systemd/system/macbook-lighter.service"
   install -Dm755 "src/macbook-lighter-ambient.sh" "$pkgdir/usr/bin/macbook-lighter-ambient"
   install -Dm755 "src/macbook-lighter-screen.sh" "$pkgdir/usr/bin/macbook-lighter-screen"
