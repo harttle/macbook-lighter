@@ -10,34 +10,32 @@ kbd_max=$(cat /sys/class/leds/smc::kbd_backlight/max_brightness);
 
 #####################################################
 # Settings
-# transition duration
+[ -f /etc/macbook-lighter.conf ] && source /etc/macbook-lighter.conf
 ML_DURATION=${ML_DURATION:-1.5}
-# frame for each step
-ML_FRAME=0.017
-# check interval
-ML_INTERVAL=5
-# bright enough
-ML_BRIGHT=40
-# trigger threshold
-ML_SCREEN_THRESHOLD=10
-# min screen brightness
-ML_MIN_BRIGHT=15
-# keyboard brightness on dark
-ML_KBD_BRIGHT=128
-# battery dim
+ML_FRAME=${ML_DURATION:-0.017}
+ML_INTERVAL=${ML_INTERVAL:-5}
+ML_BRIGHT_ENOUGH=${ML_BRIGHT_ENOUGH:-40}
+ML_SCREEN_THRESHOLD=${ML_SCREEN_THRESHOLD:-10}
+ML_SCREEN_MIN_BRIGHT=${ML_SCREEN_MIN_BRIGHT:-15}
+ML_KBD_BRIGHT=${ML_KBD_BRIGHT:-128}
 ML_BATTERY_DIM=${ML_BATTERY_DIM:-0.2}
-# DEBUG
+ML_AUTO_KBD=${ML_AUTO_KBD:-true}
+ML_AUTO_SCREEN=${ML_AUTO_SCREEN:-true}
 ML_DEBUG=${ML_DEBUG:-false}
-$ML_DEBUG && set -e
 
 #####################################################
 # Private States
 screen_ajusted_at=0
 kbd_adjusted_at=0
 
+$ML_DEBUG && set -e
+
 function get_light {
     val=$(cat $light_dev)   # eg. (41,0)
-    echo $((${val:1:-3} + 1))    # eg. 41
+    val=${val:1:-3}    # eg. 41
+    val=$(($val > $ML_BRIGHT_ENOUGH ? $ML_BRIGHT_ENOUGH : $val))
+    val=$(($val == 0 ? 1 : $val))
+    echo $val
 }
 
 function transition {
@@ -55,8 +53,8 @@ function transition {
 
 function screen_range {
     screen_to=$1
-    if (( screen_to < ML_MIN_BRIGHT )); then
-        echo $ML_MIN_BRIGHT
+    if (( screen_to < ML_SCREEN_MIN_BRIGHT )); then
+        echo $ML_SCREEN_MIN_BRIGHT
     elif (( screen_to > screen_max )); then
         echo $screen_max
     else
@@ -80,13 +78,17 @@ function update_screen {
 function update_kbd {
     light=$1
     kbd_from=$(cat $kbd_dev)
-
-    $ML_DEBUG && echo light:$light, kbd_adjusted_at:$kbd_adjusted_at, ML_BRIGHT: $ML_BRIGHT
-    if (( light >= ML_BRIGHT && kbd_adjusted_at < ML_BRIGHT )); then
+    if (( kbd_from != 0 )); then
         ML_KBD_BRIGHT=$kbd_from
+    fi
+
+    $ML_DEBUG && echo light:$light, kbd_adjusted_at:$kbd_adjusted_at, ML_KBD_BRIGHT: $ML_KBD_BRIGHT
+    if (( light >= ML_BRIGHT_ENOUGH && kbd_adjusted_at < ML_BRIGHT_ENOUGH )); then
         kbd_to=0
-    elif (( light < ML_BRIGHT && kbd_adjusted_at >= ML_BRIGHT )); then
+    elif (( light < ML_BRIGHT_ENOUGH && kbd_adjusted_at >= ML_BRIGHT_ENOUGH )); then
         kbd_to=$ML_KBD_BRIGHT
+    else
+        kbd_to=$kbd_from
     fi
 
     if (( kbd_to == kbd_from )); then
@@ -106,8 +108,8 @@ function update {
     fi
 
     light=$(get_light)
-    update_screen $light
-    update_kbd $light
+    $ML_AUTO_SCREEN && update_screen $light
+    $ML_AUTO_KBD && update_kbd $light
 }
 
 function watch {
@@ -117,16 +119,26 @@ function watch {
     done
 }
 
+function power_coef {
+    power=$(cat $power_dev)
+    if [ "$power" == 0 ]; then
+        echo "1 - $ML_BATTERY_DIM" | bc
+    else
+        echo 1
+    fi
+}
+
 function init {
     light=$(get_light)
-    power=$(cat $power_dev)
+
     screen_ajusted_at=$light
     kbd_adjusted_at=$light
-    if (( light >= ML_BRIGHT )); then
+    if (( light >= ML_BRIGHT_ENOUGH )); then
         screen_to=$screen_max
         kbd_to=0
     else
-        screen_to=$(echo "(1.2 - $ML_BATTERY_DIM) * $screen_max * $light / $ML_BRIGHT" | bc)
+        coef=$(power_coef)
+        screen_to=$(echo "1.2 * $coef * $screen_max * $light / $ML_BRIGHT_ENOUGH" | bc)
         screen_to=$(screen_range $screen_to)
         kbd_to=$ML_KBD_BRIGHT
     fi
@@ -134,8 +146,8 @@ function init {
     screen_from=$(cat $screen_dev)
     kbd_from=$(cat $kbd_dev)
 
-    transition $screen_from $screen_to $screen_dev
-    transition $kbd_from $kbd_to $kbd_dev
+    $ML_AUTO_SCREEN && transition $screen_from $screen_to $screen_dev
+    $ML_AUTO_KBD && transition $kbd_from $kbd_to $kbd_dev
 }
 
 init

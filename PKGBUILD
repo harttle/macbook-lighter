@@ -21,6 +21,7 @@ pkgver() {
 
 package() {
   cd "$srcdir/$pkgname"
+  [ ! -f /etc/macbook-lighter.conf ] && install -Dm644 macbook-lighter.conf /etc/macbook-lighter.conf
   install -Dm644 "macbook-lighter.service" "$pkgdir/usr/lib/systemd/system/macbook-lighter.service"
   install -Dm755 "src/macbook-lighter-ambient.sh" "$pkgdir/usr/bin/macbook-lighter-ambient"
   install -Dm755 "src/macbook-lighter-screen.sh" "$pkgdir/usr/bin/macbook-lighter-screen"
