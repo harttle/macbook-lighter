@@ -9,8 +9,8 @@ url="https://github.com/harttle/macbook-lighter"
 license=('GPL')
 depends=('bc')
 makedepends=('git')
-provides=(macbook-lighter macbook-lighter-kbd macbook-lighter-screen)
-conflicts=(macbook-lighter macbook-lighter-kbd macbook-lighter-screen)
+provides=()
+conflicts=()
 source=('git+https://github.com/harttle/macbook-lighter.git')
 md5sums=('SKIP')
 
