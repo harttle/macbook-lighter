@@ -28,8 +28,6 @@ ML_DEBUG=${ML_DEBUG:-false}
 screen_ajusted_at=0
 kbd_adjusted_at=0
 
-$ML_DEBUG && set -e
-
 function get_light {
     val=$(cat $light_dev)   # eg. (41,0)
     val=${val:1:-3}    # eg. 41
@@ -47,7 +45,7 @@ function transition {
     steps=$(echo "$ML_DURATION / $ML_FRAME" | bc)
     for ((step=1; step<=$steps; step++)); do
         result=$(echo "($to - $from) * $step / $steps + $from" | bc)
-        echo "$result" > $dev
+        echo "$result" > "$dev"
     done
 }
 
@@ -68,7 +66,7 @@ function update_screen {
     screen_to=$(echo "$screen_from * $light / $screen_ajusted_at" | bc)
     screen_to=$(screen_range $screen_to)
     if (( screen_to - screen_from > -ML_SCREEN_THRESHOLD && screen_to - screen_from < ML_SCREEN_THRESHOLD )); then
-        $ML_DEBUG && echo "threshold not reached($screen_from->$screen_to), skip update"
+        $ML_DEBUG && echo "screen threshold not reached($screen_from->$screen_to), skip update"
         return
     fi
     screen_ajusted_at=$light
