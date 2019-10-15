@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 
-lid_dev="/proc/acpi/button/lid/LID0/state";
-light_dev="/sys/devices/platform/applesmc.768/light";
-power_dev="/sys/class/power_supply/ADP1/online";
-screen_dev="/sys/class/backlight/intel_backlight/brightness";
-kbd_dev="/sys/class/leds/smc::kbd_backlight/brightness";
-screen_max=$(cat /sys/class/backlight/intel_backlight/max_brightness);
-kbd_max=$(cat /sys/class/leds/smc::kbd_backlight/max_brightness);
+intel_dir=/sys/class/backlight/intel_backlight
+kbd_dir=/sys/class/leds/smc::kbd_backlight
+
+power_file=/sys/class/power_supply/ADP1/online
+screen_file=$intel_dir/brightness
+kbd_file=$kbd_dir/brightness
+lid_file=/proc/acpi/button/lid/LID0/state
+light_file="/sys/devices/platform/applesmc.768/light"
+
+#####################################################
+# wait drivers loaded
+
+$ML_DEBUG && echo checking $intel_dir and $kbd_dir...
+while [ ! -d $intel_dir -o ! -d $kbd_dir ]; do
+    sleep 1
+done
+screen_max=$(cat $intel_dir/max_brightness)
 
 #####################################################
 # Settings
@@ -29,7 +39,7 @@ screen_ajusted_at=0
 kbd_adjusted_at=0
 
 function get_light {
-    val=$(cat $light_dev)   # eg. (41,0)
+    val=$(cat $light_file)   # eg. (41,0)
     val=${val:1:-3}    # eg. 41
     val=$(($val > $ML_BRIGHT_ENOUGH ? $ML_BRIGHT_ENOUGH : $val))
     val=$(($val == 0 ? 1 : $val))
@@ -62,7 +72,7 @@ function screen_range {
 
 function update_screen {
     light=$1
-    screen_from=$(cat $screen_dev)
+    screen_from=$(cat $screen_file)
     screen_to=$(echo "$screen_from * $light / $screen_ajusted_at" | bc)
     screen_to=$(screen_range $screen_to)
     if (( screen_to - screen_from > -ML_SCREEN_THRESHOLD && screen_to - screen_from < ML_SCREEN_THRESHOLD )); then
@@ -70,12 +80,12 @@ function update_screen {
         return
     fi
     screen_ajusted_at=$light
-    transition $screen_from $screen_to $screen_dev
+    transition $screen_from $screen_to $screen_file
 }
 
 function update_kbd {
     light=$1
-    kbd_from=$(cat $kbd_dev)
+    kbd_from=$(cat $kbd_file)
     if (( kbd_from != 0 )); then
         ML_KBD_BRIGHT=$kbd_from
     fi
@@ -94,12 +104,12 @@ function update_kbd {
         return
     fi
     kbd_adjusted_at=$light
-    transition $kbd_from $kbd_to $kbd_dev
+    transition $kbd_from $kbd_to $kbd_file
 }
 
 function update {
     $ML_DEBUG && echo updating
-    lid=$(awk -F: '{print $2}' $lid_dev)
+    lid=$(awk -F: '{print $2}' $lid_file)
     if [ "$lid" == "closed" ]; then
         $ML_DEBUG && echo lid closed, skip update
         return
@@ -111,6 +121,7 @@ function update {
 }
 
 function watch {
+    $ML_DEBUG && echo watching light change...
     while true; do
         update
         sleep $ML_INTERVAL
@@ -118,7 +129,7 @@ function watch {
 }
 
 function power_coef {
-    power=$(cat $power_dev)
+    power=$(cat $power_file)
     if [ "$power" == 0 ]; then
         echo "1 - $ML_BATTERY_DIM" | bc
     else
@@ -127,6 +138,8 @@ function power_coef {
 }
 
 function init {
+    $ML_DEBUG && echo initializing backlights...
+
     light=$(get_light)
 
     screen_ajusted_at=$light
@@ -141,11 +154,11 @@ function init {
         kbd_to=$ML_KBD_BRIGHT
     fi
 
-    screen_from=$(cat $screen_dev)
-    kbd_from=$(cat $kbd_dev)
+    screen_from=$(cat $screen_file)
+    kbd_from=$(cat $kbd_file)
 
-    $ML_AUTO_SCREEN && transition $screen_from $screen_to $screen_dev
-    $ML_AUTO_KBD && transition $kbd_from $kbd_to $kbd_dev
+    $ML_AUTO_SCREEN && transition $screen_from $screen_to $screen_file
+    $ML_AUTO_KBD && transition $kbd_from $kbd_to $kbd_file
 }
 
 init
