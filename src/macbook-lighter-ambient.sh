@@ -22,7 +22,7 @@ screen_max=$(cat $intel_dir/max_brightness)
 # Settings
 [ -f /etc/macbook-lighter.conf ] && source /etc/macbook-lighter.conf
 ML_DURATION=${ML_DURATION:-1.5}
-ML_FRAME=${ML_DURATION:-0.017}
+ML_FRAME=${ML_FRAME:-0.017}
 ML_INTERVAL=${ML_INTERVAL:-5}
 ML_BRIGHT_ENOUGH=${ML_BRIGHT_ENOUGH:-40}
 ML_SCREEN_THRESHOLD=${ML_SCREEN_THRESHOLD:-10}
