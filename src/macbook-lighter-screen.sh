@@ -1,8 +1,14 @@
+#!/usr/bin/env bash
+
 set -e
 
-device='/sys/class/backlight/intel_backlight/brightness'
-current=`cat $device`
-max=`cat /sys/class/backlight/intel_backlight/max_brightness`
+# load config
+[ -f /etc/macbook-lighter.conf ] && source /etc/macbook-lighter.conf
+
+device=${DEVICE:-intel_backlight}
+brightness=/sys/class/backlight/$device/brightness
+curr_brightness=`cat $brightness`
+max_brightness=`cat /sys/class/backlight/$device/max_brightness`
 
 screen_help () {
     echo 'Usage: macbook-lighter-screen <OPTION> [NUM]'
@@ -12,34 +18,34 @@ screen_help () {
     echo '  -i [NUM], --inc [NUM]   increase backlight by NUM'
     echo '  -d [NUM], --dec [NUM]   decrease backlight by NUM'
     echo '  -m, --min               close backlight'
-    echo '  -M, --max               set backlight to max'
+    echo '  -M, --max_brightness    set backlight to max_brightness'
     echo '  -h, --help              print this message'
     echo ''
     echo 'Examples:'
     echo '  # Increase screen backlight by 50'
     echo '  macbook-lighter-screen --inc 50'
     echo ''
-    echo '  # Set screen backlight to max'
-    echo '  macbook-lighter-screen --max'
+    echo '  # Set screen backlight to max_brightness'
+    echo '  macbook-lighter-screen --max_brightness'
 }
 
 screen_set() {
-    echo $1 > $device
+    echo $1 > $brightness
     echo set to $1
 }
 
 case $1 in
     -i|--inc)
-        screen_set $((current+$2 > max ? max : current + $2))
+        screen_set $((curr_brightness + $2 > max_brightness ? max_brightness : curr_brightness + $2))
     ;;
     -d|--dec)
-        screen_set $((current < $2 ? 0 : current - $2))
+        screen_set $((curr_brightness < $2 ? 0 : curr_brightness - $2))
     ;;
     -m|--min)
         screen_set 0
     ;;
-    -M|--max)
-        screen_set $max
+    -M|--max_brightness)
+        screen_set $max_brightness
     ;;
     -h|--help)
         screen_help
