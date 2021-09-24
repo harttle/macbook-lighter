@@ -1,26 +1,29 @@
 #!/usr/bin/env bash
 
-intel_dir=/sys/class/backlight/intel_backlight
-kbd_dir=/sys/class/leds/smc::kbd_backlight
+# load config
+[ -f /etc/macbook-lighter.conf ] && source /etc/macbook-lighter.conf
 
+device=${DEVICE:-intel_backlight}
+device_dir=/sys/class/backlight/$device
+kbd_dir=/sys/class/leds/smc::kbd_backlight
 power_file=/sys/class/power_supply/ADP1/online
-screen_file=$intel_dir/brightness
+screen_file=$device_dir/brightness
 kbd_file=$kbd_dir/brightness
 lid_file=/proc/acpi/button/lid/LID0/state
-light_file="/sys/devices/platform/applesmc.768/light"
+light_file=/sys/devices/platform/applesmc.768/light
 
 #####################################################
 # wait drivers loaded
 
-$ML_DEBUG && echo checking $intel_dir and $kbd_dir...
-while [ ! -d $intel_dir -o ! -d $kbd_dir ]; do
+$ML_DEBUG && echo checking $device_dir and $kbd_dir...
+while [ ! -d $device_dir -o ! -d $kbd_dir ]; do
     sleep 1
 done
-screen_max=$(cat $intel_dir/max_brightness)
+screen_max=$(cat $device_dir/max_brightness)
 
 #####################################################
+
 # Settings
-[ -f /etc/macbook-lighter.conf ] && source /etc/macbook-lighter.conf
 ML_DURATION=${ML_DURATION:-1.5}
 ML_FRAME=${ML_DURATION:-0.017}
 ML_INTERVAL=${ML_INTERVAL:-5}
@@ -34,6 +37,7 @@ ML_AUTO_SCREEN=${ML_AUTO_SCREEN:-true}
 ML_DEBUG=${ML_DEBUG:-false}
 
 #####################################################
+
 # Private States
 screen_ajusted_at=0
 kbd_adjusted_at=0
